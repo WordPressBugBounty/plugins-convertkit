@@ -7,7 +7,7 @@
  */
 
 /**
- * Registers OAuth integration that is be accessed at Settings > ConvertKit, when the Plugin
+ * Registers OAuth integration that is be accessed at Settings > Kit, when the Plugin
  * has no Access Token specified.
  *
  * @package ConvertKit
@@ -162,7 +162,7 @@ class ConvertKit_Settings_OAuth extends ConvertKit_Settings_Base {
 	 */
 	public function documentation_url() {
 
-		return 'https://help.convertkit.com/en/articles/2502591-the-convertkit-wordpress-plugin';
+		return 'https://help.kit.com/en/articles/2502591-the-convertkit-wordpress-plugin';
 
 	}
 
