@@ -162,6 +162,24 @@ function convertKitEmitCustomEvent( eventName, detail ) {
 }
 
 /**
+ * Handles form submissions when reCAPTCHA is enabled.
+ *
+ * @param string token reCAPTCHA token.
+ */
+function convertKitRecaptchaFormSubmit( token ) {
+
+	// Find submit button with the data-callback attribute.
+	const submitButton = document.querySelector( '[type="submit"][data-callback="convertKitRecaptchaFormSubmit"]' );
+
+	// Get the parent form of the submit button.
+	const form = submitButton.closest( 'form' );
+
+	// Submit the form.
+	form.submit();
+
+}
+
+/**
  * Register events
  */
 document.addEventListener(
@@ -211,6 +229,14 @@ document.addEventListener(
 				convertStoreSubscriberEmailAsIDInCookie( emailAddress );
 			}
 		);
+
+		// Set a cookie if any scripts with data-kit-limit-per-session attribute exist.
+		if ( document.querySelectorAll( 'script[data-kit-limit-per-session]' ).length > 0 ) {
+			document.cookie = 'ck_non_inline_form_displayed=1; path=/';
+			if ( convertkit.debug ) {
+				console.log( 'Set `ck_non_inline_form_displayed` cookie for non-inline form limit' );
+			}
+		}
 
 	}
 );
