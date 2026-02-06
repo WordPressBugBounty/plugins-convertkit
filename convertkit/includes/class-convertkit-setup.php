@@ -61,6 +61,13 @@ class ConvertKit_Setup {
 		}
 
 		/**
+		 * 3.0.4: Add form_id to entries database table.
+		 */
+		if ( version_compare( $current_version, '3.0.4', '<' ) ) {
+			$this->add_form_id_column_and_key_to_form_entries_database_table();
+		}
+
+		/**
 		 * 3.0.0: Migrate reCAPTCHA settings from Restrict Content to General settings.
 		 * Install entries database table.
 		 */
@@ -127,14 +134,6 @@ class ConvertKit_Setup {
 		}
 
 		/**
-		 * 1.6.1+: Refresh Forms, Landing Pages and Tags data stored in settings,
-		 * to get new Forms Builder Settings.
-		 */
-		if ( version_compare( $current_version, '1.6.1', '<' ) ) {
-			$this->refresh_resources();
-		}
-
-		/**
 		 * 1.9.6+: Migrate _wp_convertkit_settings[default_form] to _wp_convertkit_settings[page_form] and
 		 * _wp_convertkit_settings[post_form], now that each Post Type has its own Default Form setting
 		 * in Settings > Kit > General.
@@ -154,6 +153,44 @@ class ConvertKit_Setup {
 
 		// Update the installed version number in the options table.
 		update_option( 'convertkit_version', CONVERTKIT_PLUGIN_VERSION );
+
+	}
+
+	/**
+	 * Adds form_id column and key to form entries database table.
+	 *
+	 * @since   3.0.4
+	 */
+	private function add_form_id_column_and_key_to_form_entries_database_table() {
+
+		global $wpdb;
+
+		// Check if the column exists.
+		$exists = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COLUMN_NAME
+			FROM INFORMATION_SCHEMA.COLUMNS
+			WHERE table_name = %s
+			AND table_schema = %s
+			AND column_name = %s',
+				$wpdb->prefix . 'kit_form_entries',
+				$wpdb->dbname,
+				'form_id'
+			)
+		);
+
+		// If the column exists, don't add it again.
+		if ( $exists === 'form_id' ) {
+			return;
+		}
+
+		// Add the form_id column and key.
+		$wpdb->query(
+			$wpdb->prepare( 'ALTER TABLE %i ADD COLUMN `form_id` int(11) NOT NULL AFTER `custom_fields`', $wpdb->prefix . 'kit_form_entries' )
+		);
+		$wpdb->query(
+			$wpdb->prepare( 'ALTER TABLE %i ADD KEY `form_id` (`form_id`)', $wpdb->prefix . 'kit_form_entries' )
+		);
 
 	}
 
@@ -612,22 +649,6 @@ class ConvertKit_Setup {
 
 		// Update.
 		update_option( $convertkit_settings::SETTINGS_NAME, $settings );
-
-	}
-
-	/**
-	 * 1.6.1: Refresh Forms, Landing Pages and Tags data stored in settings,
-	 * to get new Forms Builder Settings.
-	 */
-	private function refresh_resources() {
-
-		$forms         = new ConvertKit_Resource_Forms( 'setup' );
-		$landing_pages = new ConvertKit_Resource_Landing_Pages( 'setup' );
-		$tags          = new ConvertKit_Resource_Tags( 'setup' );
-
-		$forms->refresh();
-		$landing_pages->refresh();
-		$tags->refresh();
 
 	}
 

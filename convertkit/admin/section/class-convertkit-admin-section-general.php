@@ -81,6 +81,8 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 			),
 		);
 
+		$this->maybe_disconnect();
+
 		// Register and maybe output notices for this settings screen, and the Intercom messenger.
 		if ( $this->on_settings_screen( $this->name ) ) {
 			add_filter( 'convertkit_settings_base_register_notices', array( $this, 'register_notices' ) );
@@ -94,7 +96,6 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 		parent::__construct();
 
 		$this->check_credentials();
-		$this->maybe_disconnect();
 
 	}
 
@@ -133,7 +134,17 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 
 		// Bail if no access and refresh token exist.
 		if ( ! $this->settings->has_access_and_refresh_token() ) {
-			return;
+			// Redirect to General screen, which will now show the ConvertKit_Admin_Section_OAuth screen, because
+			// the Plugin has no access token.
+			wp_safe_redirect(
+				add_query_arg(
+					array(
+						'page' => $this->settings_key,
+					),
+					'options-general.php'
+				)
+			);
+			exit();
 		}
 
 		// Initialize the API.
@@ -152,37 +163,11 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 
 		// If the request succeeded, no need to perform further actions.
 		if ( ! is_wp_error( $this->account ) ) {
-			// Remove any existing persistent notice.
-			WP_ConvertKit()->get_class( 'admin_notices' )->delete( 'authorization_failed' );
-
 			return;
 		}
 
-		// Depending on the error code, maybe persist a notice in the WordPress Administration until the user
+		// Depending on the error code, display an error notice in the settings screen until the user
 		// fixes the problem.
-		switch ( $this->account->get_error_data( $this->account->get_error_code() ) ) {
-			case 401:
-				// Access token either expired or was revoked in ConvertKit.
-				// Remove from settings.
-				$this->settings->delete_credentials();
-
-				// Display a site wide notice.
-				WP_ConvertKit()->get_class( 'admin_notices' )->add( 'authorization_failed' );
-
-				// Redirect to General screen, which will now show the ConvertKit_Admin_Section_OAuth screen, because
-				// the Plugin has no access token.
-				wp_safe_redirect(
-					add_query_arg(
-						array(
-							'page' => $this->settings_key,
-						),
-						'options-general.php'
-					)
-				);
-				exit();
-		}
-
-		// Output a non-401 error now.
 		$this->output_error( $this->account->get_error_message() );
 
 	}
@@ -214,16 +199,20 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 
 		// Delete cached resources.
 		$creator_network = new ConvertKit_Resource_Creator_Network_Recommendations();
+		$custom_fields   = new ConvertKit_Resource_Custom_Fields();
 		$forms           = new ConvertKit_Resource_Forms();
 		$landing_pages   = new ConvertKit_Resource_Landing_Pages();
 		$posts           = new ConvertKit_Resource_Posts();
 		$products        = new ConvertKit_Resource_Products();
+		$sequences       = new ConvertKit_Resource_Sequences();
 		$tags            = new ConvertKit_Resource_Tags();
 		$creator_network->delete();
+		$custom_fields->delete();
 		$forms->delete();
 		$landing_pages->delete();
 		$posts->delete();
 		$products->delete();
+		$sequences->delete();
 		$tags->delete();
 
 		// Redirect to General screen, which will now show the ConvertKit_Settings_OAuth screen, because
@@ -472,6 +461,17 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 			)
 		);
 
+		add_settings_field(
+			'usage_tracking',
+			__( 'Usage Tracking', 'convertkit' ),
+			array( $this, 'usage_tracking_callback' ),
+			$this->settings_key,
+			$this->name . '-advanced',
+			array(
+				'label_for' => 'usage_tracking',
+			)
+		);
+
 	}
 
 	/**
@@ -480,8 +480,9 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 	public function print_section_info() {
 
 		?>
-		<p><?php esc_html_e( 'Choosing a default form will embed it at the top, bottom or top and bottom of every post or page (in single view only) across your site.', 'convertkit' ); ?></p>
-		<p><?php esc_html_e( 'If you wish to turn off form embedding or select a different form for an individual post or page, you can do so using the Kit meta box on the edit page.', 'convertkit' ); ?></p>
+		<p><?php esc_html_e( 'Forms can be embedded before and/or after (or following number of elements) on every post or page (in single view only) across your site by using the settings below.', 'convertkit' ); ?>
+		<p><?php esc_html_e( 'You can also configure non-inline forms to display site wide under the "Non-inline Forms" section below.', 'convertkit' ); ?></p>
+		<p><?php esc_html_e( 'These default form settings can be overridden using the Kit meta box on a page or post\'s edit screen. For site wide non-inline forms to respect when a post/page has forms disabled, enable the "Behavior" option in the "Non-inline Forms" section below.', 'convertkit' ); ?></p>
 		<p>
 			<?php
 			printf(
@@ -553,9 +554,10 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 	public function account_name_callback() {
 
 		// Output Account Name.
+		// If account is an error, check_credentials() will output an error above the settings section.
 		$html = sprintf(
 			'<p>%s</p>',
-			isset( $this->account['account']['name'] ) ? esc_attr( $this->account['account']['name'] ) : esc_html__( '(Not specified)', 'convertkit' )
+			! is_wp_error( $this->account ) && isset( $this->account['account']['name'] ) ? esc_attr( $this->account['account']['name'] ) : esc_html__( '(Not specified)', 'convertkit' )
 		);
 
 		// Display an option to disconnect.
@@ -601,25 +603,56 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 		}
 
 		// Refresh Forms.
-		$this->forms->refresh();
+		$result = $this->forms->refresh();
+
+		// Bail if an error occured.
+		if ( is_wp_error( $result ) ) {
+			return;
+		}
 
 		// Also refresh Landing Pages, Tags and Posts. Whilst not displayed in the Plugin Settings, this ensures up to date
 		// lists are stored for when editing e.g. Pages.
 		$landing_pages = new ConvertKit_Resource_Landing_Pages( 'settings' );
-		$landing_pages->refresh();
+		$result        = $landing_pages->refresh();
+
+		// Bail if an error occured.
+		if ( is_wp_error( $result ) ) {
+			return;
+		}
 
 		remove_all_actions( 'convertkit_resource_refreshed_posts' );
-		$posts = new ConvertKit_Resource_Posts( 'settings' );
-		$posts->refresh();
+		$posts  = new ConvertKit_Resource_Posts( 'settings' );
+		$result = $posts->refresh();
+
+		// Bail if an error occured.
+		if ( is_wp_error( $result ) ) {
+			return;
+		}
 
 		$products = new ConvertKit_Resource_Products( 'settings' );
-		$products->refresh();
+		$result   = $products->refresh();
+
+		// Bail if an error occured.
+		if ( is_wp_error( $result ) ) {
+			return;
+		}
 
 		$sequences = new ConvertKit_Resource_Sequences( 'settings' );
-		$sequences->refresh();
+		$result    = $sequences->refresh();
 
-		$tags = new ConvertKit_Resource_Tags( 'settings' );
-		$tags->refresh();
+		// Bail if an error occured.
+		if ( is_wp_error( $result ) ) {
+			return;
+		}
+
+		$tags   = new ConvertKit_Resource_Tags( 'settings' );
+		$result = $tags->refresh();
+
+		// Bail if an error occured.
+		if ( is_wp_error( $result ) ) {
+			return;
+		}
+
 	}
 
 	/**
@@ -976,6 +1009,31 @@ class ConvertKit_Admin_Section_General extends ConvertKit_Admin_Section_Base {
 					esc_html__( 'For developers who require custom form designs through use of CSS, consider using the', 'convertkit' ),
 					esc_html__( 'or', 'convertkit' ),
 					esc_html__( 'integrations.', 'convertkit' )
+				),
+			)
+		);
+
+	}
+
+	/**
+	 * Renders the input for the Usage Tracking setting.
+	 *
+	 * @since   3.0.4
+	 */
+	public function usage_tracking_callback() {
+
+		// Output field.
+		$this->output_checkbox_field(
+			'usage_tracking',
+			'on',
+			$this->settings->usage_tracking(),
+			esc_html__( 'By allowing us to collect usage data, we can better understand which WordPress configurations, themes and plugins we should test.', 'convertkit' ),
+			array(
+				sprintf(
+					'%s <a href="%s" target="_blank">%s</a>',
+					esc_html__( 'Complete documentation on usage tracking can be found', 'convertkit' ),
+					$this->documentation_url(),
+					esc_html__( 'here', 'convertkit' )
 				),
 			)
 		);
