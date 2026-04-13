@@ -89,6 +89,7 @@ class ConvertKit_API_V4 {
 	 */
 	protected $api_endpoints_oauth = array(
 		'token',
+		'revoke',
 	);
 
 	/**
@@ -458,6 +459,89 @@ class ConvertKit_API_V4 {
 		 * @param   string  $previous_refresh_token  Existing Refresh Token.
 		 */
 		do_action( 'convertkit_api_refresh_token', $result, $this->client_id, $previous_access_token, $previous_refresh_token );
+
+		// Return.
+		return $result;
+
+	}
+
+	/**
+	 * Revokes the current access and refresh tokens.
+	 *
+	 * @since   2.1.4
+	 */
+	public function revoke_tokens() {
+
+		// Revoke the access token.
+		$result = $this->post(
+			'revoke',
+			array(
+				'client_id' => $this->client_id,
+				'token'     => $this->access_token,
+			)
+		);
+
+		// If an error occured, log and return it now.
+		if ( is_wp_error( $result ) ) {
+			$this->log( 'API: Error: ' . $result->get_error_message() );
+
+			/**
+			 * Perform any actions when revoking an access token fails.
+			 *
+			 * @since   2.1.4
+			 *
+			 * @param   WP_Error  $result     Error from API.
+			 * @param   string    $client_id  OAuth Client ID.
+			 */
+			do_action( 'convertkit_api_revoke_tokens_access_token_error', $result, $this->client_id );
+
+			return $result;
+		}
+
+		// Revoke the refresh token.
+		$result = $this->post(
+			'revoke',
+			array(
+				'client_id' => $this->client_id,
+				'token'     => $this->refresh_token,
+			)
+		);
+
+		// If an error occured, log and return it now.
+		if ( is_wp_error( $result ) ) {
+			$this->log( 'API: Error: ' . $result->get_error_message() );
+
+			/**
+			 * Perform any actions when revoking a refresh token fails.
+			 *
+			 * @since   2.1.4
+			 *
+			 * @param   WP_Error  $result     Error from API.
+			 * @param   string    $client_id  OAuth Client ID.
+			 */
+			do_action( 'convertkit_api_revoke_tokens_refresh_token_error', $result, $this->client_id );
+
+			return $result;
+		}
+
+		// Store existing access and refresh tokens.
+		$previous_access_token  = $this->access_token;
+		$previous_refresh_token = $this->refresh_token;
+
+		// Remove access and refresh tokens from this class.
+		$this->access_token  = '';
+		$this->refresh_token = '';
+
+		/**
+		 * Perform any actions when the tokens are revoked, such as deleting them from the database.
+		 *
+		 * @since   2.1.4
+		 *
+		 * @param   string  $client_id               OAuth Client ID.
+		 * @param   string  $previous_access_token   Existing Access Token.
+		 * @param   string  $previous_refresh_token  Existing Refresh Token.
+		 */
+		do_action( 'convertkit_api_revoke_tokens', $this->client_id, $previous_access_token, $previous_refresh_token );
 
 		// Return.
 		return $result;
@@ -1276,6 +1360,28 @@ class ConvertKit_API_V4 {
 		// Return the HTML within the DOMDocument's <body> tag as a string.
 		return $this->get_body_html( $html );
 
+	}
+
+	/**
+	 * Sets the type attribute for script elements to 'text/javascript',
+	 * where Cloudflare prepends a random string to the type attribute.
+	 *
+	 * @param DOMNodeList<DOMElement> $elements Elements.
+	 *
+	 * @since 2.0.4
+	 *
+	 * @return void
+	 */
+	public function convert_script_type( DOMNodeList $elements ) { // phpcs:ignore Squiz.Commenting.FunctionComment.IncorrectTypeHint
+		foreach ( $elements as $element ) {
+			// Skip if the attribute is not prepended with a Cloudflare random string.
+			if ( strpos( $element->getAttribute( 'type' ), '-text/javascript' ) === false ) {
+				continue;
+			}
+
+			// Set attribute to 'text/javascript'.
+			$element->setAttribute( 'type', 'text/javascript' );
+		}
 	}
 
 	/**
