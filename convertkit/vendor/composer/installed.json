@@ -69,12 +69,12 @@
         },
         {
             "name": "convertkit/convertkit-wordpress-libraries",
-            "version": "2.6.1",
-            "version_normalized": "2.6.1.0",
+            "version": "2.7.0",
+            "version_normalized": "2.7.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/convertkit/convertkit-wordpress-libraries.git",
-                "reference": "b8ba24a9a5b80353f9d0f9d8fed1c87cc2f5da21"
+                "reference": "d7474709079b2129da47c8f0f649fc6ff257f8ee"
             },
             "require-dev": {
                 "lucatume/wp-browser": "^3.0 || ^4.0",
@@ -83,7 +83,7 @@
                 "szepeviktor/phpstan-wordpress": "^1.0 || ^2.0",
                 "wp-coding-standards/wpcs": "^3.0.0"
             },
-            "time": "2026-08-28T02:11:34+00:00",
+            "time": "2026-09-09T07:27:36+00:00",
             "type": "library",
             "installation-source": "source",
             "scripts": {
