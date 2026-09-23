@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'convertkit/convertkit-wordpress',
-        'pretty_version' => '3.4.3',
-        'version' => '3.4.3.0',
-        'reference' => '5930af14e98025d7f42ca8a5ae244ce179b177c9',
+        'pretty_version' => '3.4.4',
+        'version' => '3.4.4.0',
+        'reference' => '56ee96a99119c781768b75431b461c34dacb4aa3',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'convertkit/convertkit-wordpress' => array(
-            'pretty_version' => '3.4.3',
-            'version' => '3.4.3.0',
-            'reference' => '5930af14e98025d7f42ca8a5ae244ce179b177c9',
+            'pretty_version' => '3.4.4',
+            'version' => '3.4.4.0',
+            'reference' => '56ee96a99119c781768b75431b461c34dacb4aa3',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
