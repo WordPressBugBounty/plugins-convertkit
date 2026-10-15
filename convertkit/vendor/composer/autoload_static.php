@@ -4,46 +4,16 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit970963fbd606d5d12777ea2a72d3282b
+class ComposerStaticInit0b95df2d7a899dd12fdcf0ffa6f44157
 {
-    public static $prefixLengthsPsr4 = array (
-        'W' =>
-        array (
-            'WP\\McpSchema\\' => 13,
-            'WP\\MCP\\' => 7,
-        ),
-        'A' =>
-        array (
-            'Automattic\\Jetpack\\Autoloader\\' => 30,
-        ),
-    );
-
-    public static $prefixDirsPsr4 = array (
-        'WP\\McpSchema\\' =>
-        array (
-            0 => __DIR__ . '/..' . '/wordpress/php-mcp-schema/src',
-        ),
-        'WP\\MCP\\' =>
-        array (
-            0 => __DIR__ . '/..' . '/wordpress/mcp-adapter/includes',
-        ),
-        'Automattic\\Jetpack\\Autoloader\\' =>
-        array (
-            0 => __DIR__ . '/..' . '/automattic/jetpack-autoloader/src',
-        ),
-    );
-
     public static $classMap = array (
-        'Automattic\\Jetpack\\Autoloader\\AutoloadGenerator' => __DIR__ . '/..' . '/automattic/jetpack-autoloader/src/AutoloadGenerator.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit970963fbd606d5d12777ea2a72d3282b::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit970963fbd606d5d12777ea2a72d3282b::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit970963fbd606d5d12777ea2a72d3282b::$classMap;
+            $loader->classMap = ComposerStaticInit0b95df2d7a899dd12fdcf0ffa6f44157::$classMap;
 
         }, null, ClassLoader::class);
     }
